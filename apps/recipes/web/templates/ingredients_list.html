@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingredientes CSV</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 1rem; background: #fafafa; color: #222; }
+        .wrap { max-width: 1200px; margin: 0 auto; }
+        .top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        form { display: flex; gap: 0.5rem; }
+        input { padding: 0.5rem; min-width: 280px; }
+        button, a.btn { padding: 0.52rem 0.8rem; border: 1px solid #666; background: #fff; text-decoration: none; color: #222; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; background: #fff; }
+        th, td { border: 1px solid #ddd; padding: 0.45rem; text-align: left; vertical-align: top; }
+        th { background: #f3f3f3; }
+        .pager { margin-top: 0.8rem; display: flex; gap: 0.7rem; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="top">
+            <h1>Ingredientes CSV</h1>
+            <a class="btn" href="{% url 'home' %}">Volver</a>
+        </div>
+
+        <form method="get">
+            <input type="text" name="q" value="{{ query }}" placeholder="Buscar por nombre o fdc_id">
+            <button type="submit">Buscar</button>
+        </form>
+
+        <p><strong>Resultados:</strong> {{ total_filtered }}</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>fdc_id</th>
+                    <th>alimento</th>
+                    <th>nutrientes (JSON)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in page_obj.object_list %}
+                <tr>
+                    <td>{{ item.fdc_id }}</td>
+                    <td>{{ item.alimento }}</td>
+                    <td><code>{{ item.nutrientes }}</code></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3">Sin resultados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="pager">
+            {% if page_obj.has_previous %}
+                <a class="btn" href="?q={{ query }}&page={{ page_obj.previous_page_number }}">Anterior</a>
+            {% endif %}
+            <span>Pagina {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+                <a class="btn" href="?q={{ query }}&page={{ page_obj.next_page_number }}">Siguiente</a>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
