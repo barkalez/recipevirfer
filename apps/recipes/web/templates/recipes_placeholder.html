@@ -1,0 +1,92 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear recetas | Recipes Project</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/recipes_placeholder.css' %}">
+</head>
+<body>
+    <div class="gradient-glow glow-a"></div>
+    <div class="gradient-glow glow-b"></div>
+
+    <main class="placeholder-wrap">
+        <section class="placeholder-card">
+            <p class="kicker">Recipes Project</p>
+            <h1>CREAR RECETAS</h1>
+            <p class="desc">Empieza tu receta añadiendo ingredientes con cantidad y unidad de medida.</p>
+            <a class="back-btn" href="{% url 'home' %}">Volver a Home</a>
+        </section>
+
+        <section class="builder-card">
+            <h2>Añadir ingredientes</h2>
+            <div class="ingredient-row">
+                <div class="field ingredient-field">
+                    <label for="ingredient-search">Ingrediente</label>
+                    <input
+                        id="ingredient-search"
+                        type="text"
+                        autocomplete="off"
+                        placeholder="Escribe un nombre (ej: pep)"
+                        data-suggestions-url="{% url 'ingredient-suggestions' %}"
+                    >
+                    <input id="ingredient-selected-id" type="hidden">
+                    <ul id="ingredient-suggestions" class="suggestions" hidden></ul>
+                </div>
+
+                <div class="field qty-field">
+                    <label for="ingredient-qty">Cantidad</label>
+                    <input id="ingredient-qty" type="number" min="0" step="0.01" placeholder="0.00">
+                </div>
+
+                <div class="field unit-field">
+                    <label for="ingredient-unit">Unidad</label>
+                    <select id="ingredient-unit">
+                        <option value="g">g</option>
+                        <option value="kg">kg</option>
+                        <option value="ml">ml</option>
+                        <option value="l">l</option>
+                        <option value="unidad">unidad</option>
+                        <option value="cucharada">cucharada</option>
+                        <option value="cucharadita">cucharadita</option>
+                        <option value="taza">taza</option>
+                    </select>
+                </div>
+
+                <div class="field btn-field">
+                    <label class="ghost">Accion</label>
+                    <button id="add-ingredient-btn" type="button">Añadir ingrediente</button>
+                </div>
+            </div>
+
+            <p id="builder-message" class="builder-message" aria-live="polite"></p>
+        </section>
+
+        <section class="picked-zone">
+            <div class="picked-head">
+                <h2>Ingredientes añadidos</h2>
+                <span class="picked-sub">Tu lista para la receta actual</span>
+            </div>
+            <div id="picked-ingredients" class="picked-grid"></div>
+        </section>
+    </main>
+
+    <div id="ingredient-modal" class="ingredient-modal" hidden>
+        <div class="modal-backdrop" data-close-modal="true"></div>
+        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+            <button id="modal-close-btn" class="modal-close" type="button" aria-label="Cerrar">×</button>
+            <p class="modal-kicker">Ficha de ingrediente</p>
+            <h3 id="modal-title">Detalle</h3>
+            <p id="modal-subtitle" class="modal-subtitle"></p>
+            <div id="modal-loading" class="modal-loading">Cargando informacion nutricional...</div>
+            <div id="modal-content" class="modal-content" hidden></div>
+        </section>
+    </div>
+
+    <script src="{% static 'js/recipes_placeholder.js' %}" defer></script>
+</body>
+</html>

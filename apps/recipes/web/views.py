@@ -1,5 +1,6 @@
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import render
 
 from apps.recipes.models import CsvIngredient
@@ -12,6 +13,23 @@ def landing(request):
 def home(request):
     total = CsvIngredient.objects.count()
     return render(request, "home.html", {"total_ingredients": total})
+
+
+def recipes_create_placeholder(request):
+    return render(request, "recipes_placeholder.html")
+
+
+def ingredient_suggestions(request):
+    query = (request.GET.get("q") or "").strip()
+    if len(query) < 1:
+        return JsonResponse({"results": []})
+
+    rows = (
+        CsvIngredient.objects.filter(alimento__istartswith=query)
+        .order_by("alimento")
+        .values("fdc_id", "alimento")[:5]
+    )
+    return JsonResponse({"results": list(rows)})
 
 
 def ingredients_list(request):

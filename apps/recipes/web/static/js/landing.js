@@ -48,7 +48,11 @@ function parallaxOnPointer() {
   window.addEventListener("pointermove", (event) => {
     const x = (event.clientX / window.innerWidth - 0.5) * 12;
     const y = (event.clientY / window.innerHeight - 0.5) * 12;
-    hero.style.transform = `translate(${x * -0.18}px, ${y * -0.18}px)`;
+    layer.style.transform = `translate(${x * -0.12}px, ${y * -0.12}px)`;
+  });
+
+  window.addEventListener("pointerleave", () => {
+    layer.style.transform = "translate(0, 0)";
   });
 }
 

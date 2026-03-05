@@ -1,25 +1,40 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recipes Project | Home</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 2rem; background: #f9f7f3; color: #222; }
-        .card { max-width: 780px; margin: 0 auto; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 1.2rem 1.4rem; }
-        a { color: #0b57d0; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .btn { display: inline-block; margin-right: 0.75rem; margin-top: 0.6rem; padding: 0.55rem 0.8rem; border: 1px solid #0b57d0; border-radius: 8px; }
-    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/home.css' %}">
 </head>
 <body>
-    <main class="card">
-        <h1>Recipes Project</h1>
-        <p>Base manual eliminada. Este proyecto ahora usa ingredientes cargados desde CSV en PostgreSQL.</p>
-        <p><strong>Total ingredientes cargados:</strong> {{ total_ingredients }}</p>
-        <a class="btn" href="{% url 'ingredients-list' %}">Ver ingredientes</a>
-        <a class="btn" href="/api/v1/health/">Health API</a>
-        <a class="btn" href="/admin/">Admin</a>
+    <div class="gradient-glow glow-a"></div>
+    <div class="gradient-glow glow-b"></div>
+    <div class="spice-layer" id="spice-layer" aria-hidden="true"></div>
+
+    <main class="home-wrap">
+        <section class="home-card">
+            <p class="kicker">Recipes Project</p>
+            <h1>HOME</h1>
+            <p class="lead">Tu centro para explorar ingredientes y preparar el siguiente paso de recetas.</p>
+
+            <div class="stat-box">
+                <span class="stat-label">Total ingredientes cargados</span>
+                <strong class="stat-value" id="ingredients-count" data-target="{{ total_ingredients }}">0</strong>
+            </div>
+
+            <nav class="actions">
+                <a class="action-btn primary" href="{% url 'ingredients-list' %}">Ver ingredientes</a>
+                <a class="action-btn primary" href="{% url 'recipes-create' %}">Crear recetas</a>
+                <a class="action-btn secondary" href="/api/v1/health/">Health API</a>
+                <a class="action-btn secondary" href="/admin/">Admin</a>
+            </nav>
+        </section>
     </main>
+
+    <script src="{% static 'js/home.js' %}" defer></script>
 </body>
 </html>

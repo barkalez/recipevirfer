@@ -18,6 +18,14 @@ def _safe_float(v):
         return None
 
 
+def _first_nutrient_value(nutrients, keys):
+    for key in keys:
+        value = nutrients.get(key)
+        if value not in (None, ""):
+            return value
+    return None
+
+
 def apply_nutrient_range_filters(queryset, protein_min, protein_max, calories_min, calories_max):
     if all(v is None for v in [protein_min, protein_max, calories_min, calories_max]):
         return queryset
@@ -25,8 +33,18 @@ def apply_nutrient_range_filters(queryset, protein_min, protein_max, calories_mi
     valid_ids = []
     for pk, nutrients in queryset.values_list("id", "nutrientes"):
         nutrients = nutrients or {}
-        protein = _safe_float(nutrients.get("protein_g"))
-        calories = _safe_float(nutrients.get("energy_kcal"))
+        protein = _safe_float(
+            _first_nutrient_value(
+                nutrients,
+                ["protein_g", "proteína_g", "proteina_g"],
+            )
+        )
+        calories = _safe_float(
+            _first_nutrient_value(
+                nutrients,
+                ["energy_kcal", "energía_kcal", "energia_kcal"],
+            )
+        )
 
         if protein_min is not None and (protein is None or protein < protein_min):
             continue

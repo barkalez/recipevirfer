@@ -33,11 +33,30 @@ class CsvIngredientSerializer(serializers.ModelSerializer):
         except (TypeError, ValueError):
             return None
 
+    def _first_nutrient_value(self, nutrients, keys):
+        for key in keys:
+            value = nutrients.get(key)
+            if value not in (None, ""):
+                return value
+        return None
+
     def get_calorias_100g(self, obj):
-        return self._to_float((obj.nutrientes or {}).get("energy_kcal"))
+        nutrients = obj.nutrientes or {}
+        return self._to_float(
+            self._first_nutrient_value(
+                nutrients,
+                ["energy_kcal", "energía_kcal", "energia_kcal"],
+            )
+        )
 
     def get_proteinas_100g(self, obj):
-        return self._to_float((obj.nutrientes or {}).get("protein_g"))
+        nutrients = obj.nutrientes or {}
+        return self._to_float(
+            self._first_nutrient_value(
+                nutrients,
+                ["protein_g", "proteína_g", "proteina_g"],
+            )
+        )
 
     def get_categoria_inferida(self, obj):
         return infer_category(obj.alimento)
