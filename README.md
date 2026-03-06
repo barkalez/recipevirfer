@@ -1,147 +1,146 @@
 # recipevirfer
 
-Proyecto Django + Django REST Framework para gestionar y consultar un catalogo de ingredientes cargados desde CSV (USDA traducido), con interfaz web basica y API REST.
+Proyecto Django + DRF para gestionar ingredientes nutricionales con arquitectura **local-first** y creación de recetas por **pasos culinarios**.
 
-## Estado actual del dominio
-- Modelo principal activo: `CsvIngredient`
-  - `fdc_id` (unico)
-  - `alimento`
-  - `nutrientes` (JSON)
-- El flujo manual antiguo (altas de ingredientes/recetas/menu semanal) fue retirado del modelo actual.
-- El proyecto hoy esta centrado en:
-  - Importacion masiva desde CSV
-  - Exploracion web de ingredientes
-  - Consulta por API con filtros
+## Estado actual
 
-## Stack
-- Python 3
-- Django 6
-- Django REST Framework
-- PostgreSQL (`DATABASE_URL` via `django-environ`)
+- El dataset principal es `csv/nutritional-info.csv`.
+- PostgreSQL es la fuente primaria de datos.
+- El autocomplete siempre consulta primero la base local.
+- USDA FoodData Central se usa solo bajo demanda para ingredientes no existentes.
+- La pantalla de crear recetas trabaja con pasos tipo:
+  - `Sofreír 2 dientes de ajo picado durante 2 minutos.`
 
-## Configuracion de entorno
-1. Crear entorno virtual e instalar dependencias:
+## Arquitectura Local-First
 
-```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-```
+1. Usuario escribe en un autocomplete.
+2. Backend consulta PostgreSQL.
+3. Si hay coincidencias: devuelve máximo 5.
+4. Si no hay coincidencias:
+   - Ingredientes: botón `Añadir "..." desde API` (USDA).
+   - Medidas, acciones y participios: botón para alta manual local.
+5. Una vez importado/creado, el dato queda persistido y aparece en búsquedas futuras locales.
 
-2. Crear `.env`:
+## Modelos principales
 
-```bash
-cp .env.example .env
-```
+### `NutritionalInfoIngredient`
+- `source_id` (id local de referencia)
+- `fdc_id` (id USDA opcional)
+- `name` (nombre visible ES)
+- `normalized_name`
+- `scientific_name`
+- `source_name_en`
+- `source` (`csv_import` / `usda_api`)
+- `edible_portion`
+- `energy_total`
+- `protein_total`
+- `nutrients` (JSON)
+- `source_payload` (JSON técnico)
 
-3. Ajustar variables segun tu entorno:
+### `IngredientSearchAlias`
+Resolución ES -> EN para USDA.
+
+### `CulinaryUnit`
+Medidas culinarias locales (seed/manual).
+
+### `CulinaryAction`
+Acciones culinarias locales (seed/manual).
+
+### `CulinaryParticiple`
+Participios culinarios locales (seed/manual), para frases tipo `ajo picado`.
+
+## Flujo USDA (solo bajo demanda)
+
+Endpoint: `POST /ingredients/import-from-api/`
+
+- Si el ingrediente ya existe localmente, no consulta USDA.
+- Si no existe:
+  - resuelve término en español,
+  - consulta USDA,
+  - selecciona el mejor candidato,
+  - mapea nutrientes al esquema local,
+  - guarda en PostgreSQL.
+
+## Autocompletes activos
+
+- Ingredientes: `GET /ingredients/suggestions/?q=...`
+- Medidas culinarias: `GET /culinary-units/suggestions/?q=...`
+- Acciones culinarias: `GET /culinary-actions/suggestions/?q=...`
+- Participios culinarios: `GET /culinary-participles/suggestions/?q=...`
+
+Todos:
+- máximo 5 resultados,
+- búsqueda case-insensitive,
+- prioridad por prefijo,
+- sin recarga de página,
+- navegación con teclado.
+
+## Endpoints de alta manual
+
+- Medidas: `POST /culinary-units/add/`
+- Acciones: `POST /culinary-actions/add/`
+- Participios: `POST /culinary-participles/add/`
+
+## Página de creación de recetas
+
+Ruta: `/recipes/create/`
+
+Panel **Añadir pasos a la receta** con campos:
+1. Acción culinaria
+2. Cantidad
+3. Unidad
+4. Ingrediente
+5. Participio
+6. Duración (`sg`, `minutos`, `horas`)
+
+Al añadir, se crea una card en **Pasos de la receta añadidos** con texto natural.
+
+- Botón de card: `Eliminar paso`.
+- Lógica singular/plural aplicada para unidades y duración.
+- Límite de cantidad: máximo `10000`.
+
+## Variables de entorno
+
+Configurar en `.env`:
 
 ```env
 SECRET_KEY=change-me
 DEBUG=True
-ALLOWED_HOSTS=127.0.0.1,localhost
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/recipes_db
+ALLOWED_HOSTS=127.0.0.1,localhost,testserver
+DATABASE_URL=postgres://fer@/recipes_db?host=/home/fer/proyectos/python/recipevirfer/.pgdata&port=55432
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+USDA_API_KEY=tu_api_key_usda
+USDA_API_BASE_URL=https://api.nal.usda.gov/fdc/v1
 ```
 
-## Base de datos
-Aplicar migraciones:
+## Comandos de gestión
 
 ```bash
 python manage.py migrate
-```
-
-Opcional (admin):
-
-```bash
-python manage.py createsuperuser
-```
-
-## Carga de datos CSV
-Comando disponible:
-
-```bash
-python manage.py import_ingredientes_csv --path /ruta/al/ingredientes_reales_usda_es.csv
-```
-
-Opciones:
-- `--batch-size 1000` (default)
-- `--keep-existing` para no vaciar tabla antes de importar
-
-Requisitos minimos del CSV:
-- Columna `fdc_id`
-- Columna `alimento` o `food`
-- El resto de columnas se guardan dentro de `nutrientes` (JSON)
-
-## Ejecucion local
-```bash
+python manage.py purge_usda_ingredient_data
+python manage.py import_nutritional_info
+python manage.py import_culinary_units --path medidas_culinarias/medidas_culinarias.md
+python manage.py import_culinary_actions --path acciones_culinarias/acciones_culinarias.md
+python manage.py import_culinary_participles
 python manage.py runserver
 ```
 
-## Rutas web
-- `GET /` landing visual
-- `GET /home/` resumen del total cargado
-- `GET /ingredients/` listado con buscador y paginacion
+## Verificación rápida
 
-## API REST (`/api/v1/`)
-
-### Health
-- `GET /api/v1/health/`
-- Respuesta:
-
-```json
-{"status": "ok"}
+```bash
+python manage.py check
+python manage.py test apps.recipes.tests
 ```
 
-### Listado de ingredientes
-- `GET /api/v1/ingredients/`
+Flujo manual recomendado:
 
-Query params soportados:
-- `q`: texto para buscar por `alimento` o `fdc_id`
-- `categoria`: categoria inferida por palabras clave (`vegetal`, `fruta`, `legumbre`, `cereal`, `proteina_animal`, `lacteo`, `grasa_aceite`, `frutos_secos_semillas`, `especia_hierba`)
-- `protein_min`
-- `protein_max`
-- `calories_min`
-- `calories_max`
-
-Ejemplo:
-
-```http
-GET /api/v1/ingredients/?q=tomate&categoria=vegetal&protein_min=1&calories_max=50
-```
-
-### Detalle por `fdc_id`
-- `GET /api/v1/ingredients/<fdc_id>/`
-
-## Estructura relevante
-```text
-.
-├── manage.py
-├── requirements.txt
-├── .env.example
-├── config/
-│   ├── urls.py
-│   └── settings/
-│       ├── base.py
-│       ├── dev.py
-│       └── prod.py
-└── apps/recipes/
-    ├── models/__init__.py
-    ├── admin.py
-    ├── api/
-    │   ├── urls.py
-    │   ├── views.py
-    │   ├── serializers.py
-    │   └── category.py
-    ├── web/
-    │   ├── urls.py
-    │   ├── views.py
-    │   ├── templates/
-    │   └── static/
-    └── management/commands/import_ingredientes_csv.py
-```
+1. Ir a `/recipes/create/`.
+2. Buscar acción/ingrediente/unidad/participio y seleccionar sugerencias.
+3. Si no existe unidad/acción/participio, usar botón de alta local.
+4. Si no existe ingrediente, usar `Añadir "..." desde API`.
+5. Añadir paso y comprobar frase final en el panel de pasos.
 
 ## Notas
-- `manage.py` usa por defecto `config.settings.dev`.
-- La API usa paginacion por pagina (`PAGE_SIZE=10`).
-- Actualmente no hay tests implementados en `apps/recipes/tests/`.
+
+- El proyecto está optimizado para minimizar llamadas a USDA (cache local persistente).
+- USDA no participa en autocomplete en tiempo real.

@@ -95,6 +95,9 @@ CORS_ALLOWED_ORIGINS = env.list(
     default=["http://localhost:3000", "http://127.0.0.1:3000"],
 )
 
+USDA_API_KEY = env("USDA_API_KEY", default="DEMO_KEY")
+USDA_API_BASE_URL = env("USDA_API_BASE_URL", default="https://api.nal.usda.gov/fdc/v1")
+
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",

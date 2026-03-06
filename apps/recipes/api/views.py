@@ -4,11 +4,10 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.recipes.models import CsvIngredient
+from apps.recipes.models import NutritionalInfoIngredient
+from apps.recipes.services import normalize_spanish_term
 
-from .serializers import CsvIngredientSerializer
-
-from .category import apply_category_filter
+from .serializers import NutritionalInfoIngredientSerializer
 
 
 def _safe_float(v):
@@ -16,48 +15,6 @@ def _safe_float(v):
         return float(v)
     except (TypeError, ValueError):
         return None
-
-
-def _first_nutrient_value(nutrients, keys):
-    for key in keys:
-        value = nutrients.get(key)
-        if value not in (None, ""):
-            return value
-    return None
-
-
-def apply_nutrient_range_filters(queryset, protein_min, protein_max, calories_min, calories_max):
-    if all(v is None for v in [protein_min, protein_max, calories_min, calories_max]):
-        return queryset
-
-    valid_ids = []
-    for pk, nutrients in queryset.values_list("id", "nutrientes"):
-        nutrients = nutrients or {}
-        protein = _safe_float(
-            _first_nutrient_value(
-                nutrients,
-                ["protein_g", "proteína_g", "proteina_g"],
-            )
-        )
-        calories = _safe_float(
-            _first_nutrient_value(
-                nutrients,
-                ["energy_kcal", "energía_kcal", "energia_kcal"],
-            )
-        )
-
-        if protein_min is not None and (protein is None or protein < protein_min):
-            continue
-        if protein_max is not None and (protein is None or protein > protein_max):
-            continue
-        if calories_min is not None and (calories is None or calories < calories_min):
-            continue
-        if calories_max is not None and (calories is None or calories > calories_max):
-            continue
-
-        valid_ids.append(pk)
-
-    return queryset.filter(id__in=valid_ids)
 
 
 class HealthCheckView(APIView):
@@ -69,15 +26,14 @@ class HealthCheckView(APIView):
 
 
 class IngredientListAPIView(generics.ListAPIView):
-    serializer_class = CsvIngredientSerializer
+    serializer_class = NutritionalInfoIngredientSerializer
     authentication_classes = []
     permission_classes = []
 
     def get_queryset(self):
-        queryset = CsvIngredient.objects.all().order_by("alimento")
+        queryset = NutritionalInfoIngredient.objects.all().order_by("name")
 
         query = (self.request.query_params.get("q") or "").strip()
-        categoria = (self.request.query_params.get("categoria") or "").strip().lower()
 
         protein_min = _safe_float(self.request.query_params.get("protein_min"))
         protein_max = _safe_float(self.request.query_params.get("protein_max"))
@@ -85,29 +41,37 @@ class IngredientListAPIView(generics.ListAPIView):
         calories_max = _safe_float(self.request.query_params.get("calories_max"))
 
         if query:
+            normalized_query = normalize_spanish_term(query)
             if query.isdigit():
-                queryset = queryset.filter(Q(fdc_id=int(query)) | Q(alimento__icontains=query))
+                queryset = queryset.filter(
+                    Q(source_id=int(query))
+                    | Q(name__icontains=query)
+                    | Q(normalized_name__icontains=normalized_query)
+                    | Q(scientific_name__icontains=query)
+                )
             else:
-                queryset = queryset.filter(alimento__icontains=query)
+                queryset = queryset.filter(
+                    Q(name__icontains=query)
+                    | Q(normalized_name__icontains=normalized_query)
+                    | Q(scientific_name__icontains=query)
+                )
 
-        if categoria:
-            queryset = apply_category_filter(queryset, categoria)
-
-        queryset = apply_nutrient_range_filters(
-            queryset,
-            protein_min=protein_min,
-            protein_max=protein_max,
-            calories_min=calories_min,
-            calories_max=calories_max,
-        )
+        if protein_min is not None:
+            queryset = queryset.filter(protein_total__gte=protein_min)
+        if protein_max is not None:
+            queryset = queryset.filter(protein_total__lte=protein_max)
+        if calories_min is not None:
+            queryset = queryset.filter(energy_total__gte=calories_min)
+        if calories_max is not None:
+            queryset = queryset.filter(energy_total__lte=calories_max)
 
         return queryset
 
 
 class IngredientDetailAPIView(generics.RetrieveAPIView):
-    serializer_class = CsvIngredientSerializer
+    serializer_class = NutritionalInfoIngredientSerializer
     authentication_classes = []
     permission_classes = []
 
     def get_object(self):
-        return get_object_or_404(CsvIngredient, fdc_id=self.kwargs["fdc_id"])
+        return get_object_or_404(NutritionalInfoIngredient, source_id=self.kwargs["source_id"])

@@ -18,48 +18,133 @@
         <section class="placeholder-card">
             <p class="kicker">Recipes Project</p>
             <h1>CREAR RECETAS</h1>
-            <p class="desc">Empieza tu receta añadiendo ingredientes con cantidad y unidad de medida.</p>
+            <p class="desc">Empieza tu receta añadiendo pasos culinarios con accion, duracion, ingrediente y medida.</p>
             <a class="back-btn" href="{% url 'home' %}">Volver a Home</a>
         </section>
 
         <section class="builder-card">
-            <h2>Añadir ingredientes</h2>
+            <h2>Añadir pasos a la receta</h2>
             <div class="ingredient-row">
+                <div class="field action-field">
+                    <label for="action-search">Accion culinaria</label>
+                    <input
+                        id="action-search"
+                        type="text"
+                        autocomplete="off"
+                        placeholder="Escribe una accion (ej: cortar)"
+                        data-suggestions-url="{% url 'culinary-action-suggestions' %}"
+                        data-add-url="{% url 'culinary-action-add' %}"
+                        aria-autocomplete="list"
+                        aria-expanded="false"
+                        aria-controls="action-suggestions"
+                        role="combobox"
+                    >
+                    <input id="action-selected-id" type="hidden">
+                    <ul id="action-suggestions" class="suggestions" role="listbox" hidden></ul>
+                    <div id="action-import-zone" class="import-zone" hidden></div>
+                </div>
+
+                <div class="field qty-field">
+                    <label for="ingredient-qty">Cantidad</label>
+                    <input
+                        id="ingredient-qty"
+                        type="number"
+                        min="0"
+                        max="10000"
+                        step="0.01"
+                        placeholder="0.00"
+                        list="ingredient-qty-presets"
+                    >
+                    <datalist id="ingredient-qty-presets">
+                        <option value="5"></option>
+                        <option value="10"></option>
+                        <option value="20"></option>
+                        <option value="25"></option>
+                        <option value="50"></option>
+                        <option value="75"></option>
+                        <option value="100"></option>
+                        <option value="150"></option>
+                        <option value="200"></option>
+                        <option value="500"></option>
+                        <option value="1000"></option>
+                    </datalist>
+                </div>
+
+                <div class="field unit-field">
+                    <label for="ingredient-unit">Unidad</label>
+                    <input
+                        id="ingredient-unit"
+                        type="text"
+                        autocomplete="off"
+                        placeholder="Escribe una medida (ej: cucharada)"
+                        data-suggestions-url="{% url 'culinary-unit-suggestions' %}"
+                        data-add-url="{% url 'culinary-unit-add' %}"
+                    >
+                    <input id="ingredient-unit-selected-id" type="hidden">
+                    <ul id="ingredient-unit-suggestions" class="suggestions" role="listbox" hidden></ul>
+                    <div id="ingredient-unit-import-zone" class="import-zone" hidden></div>
+                </div>
+
                 <div class="field ingredient-field">
                     <label for="ingredient-search">Ingrediente</label>
                     <input
                         id="ingredient-search"
                         type="text"
                         autocomplete="off"
-                        placeholder="Escribe un nombre (ej: pep)"
+                        placeholder="Escribe un nombre (ej: ajo)"
                         data-suggestions-url="{% url 'ingredient-suggestions' %}"
+                        data-import-url="{% url 'ingredient-import-from-api' %}"
+                        data-csrf-token="{{ csrf_token }}"
+                        aria-autocomplete="list"
+                        aria-expanded="false"
+                        aria-controls="ingredient-suggestions"
+                        role="combobox"
                     >
                     <input id="ingredient-selected-id" type="hidden">
-                    <ul id="ingredient-suggestions" class="suggestions" hidden></ul>
+                    <ul id="ingredient-suggestions" class="suggestions" role="listbox" hidden></ul>
+                    <div id="ingredient-import-zone" class="import-zone" hidden></div>
                 </div>
 
-                <div class="field qty-field">
-                    <label for="ingredient-qty">Cantidad</label>
-                    <input id="ingredient-qty" type="number" min="0" step="0.01" placeholder="0.00">
+                <div class="field participle-field">
+                    <label for="participle-search">Participio</label>
+                    <input
+                        id="participle-search"
+                        type="text"
+                        autocomplete="off"
+                        placeholder="Ej: picado"
+                        data-suggestions-url="{% url 'culinary-participle-suggestions' %}"
+                        data-add-url="{% url 'culinary-participle-add' %}"
+                        aria-autocomplete="list"
+                        aria-expanded="false"
+                        aria-controls="participle-suggestions"
+                        role="combobox"
+                    >
+                    <input id="participle-selected-id" type="hidden">
+                    <ul id="participle-suggestions" class="suggestions" role="listbox" hidden></ul>
+                    <div id="participle-import-zone" class="import-zone" hidden></div>
                 </div>
 
-                <div class="field unit-field">
-                    <label for="ingredient-unit">Unidad</label>
-                    <select id="ingredient-unit">
-                        <option value="g">g</option>
-                        <option value="kg">kg</option>
-                        <option value="ml">ml</option>
-                        <option value="l">l</option>
-                        <option value="unidad">unidad</option>
-                        <option value="cucharada">cucharada</option>
-                        <option value="cucharadita">cucharadita</option>
-                        <option value="taza">taza</option>
-                    </select>
+                <div class="field duration-field">
+                    <label for="action-duration-value">Duracion</label>
+                    <div class="duration-inline">
+                        <input
+                            id="action-duration-value"
+                            type="number"
+                            min="0"
+                            step="1"
+                            placeholder="0"
+                        >
+                        <select id="action-duration-unit">
+                            <option value="sg">sg</option>
+                            <option value="minutos">minutos</option>
+                            <option value="horas">horas</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="field btn-field">
                     <label class="ghost">Accion</label>
-                    <button id="add-ingredient-btn" type="button">Añadir ingrediente</button>
+                    <button id="add-ingredient-btn" type="button">Añadir paso en la receta</button>
                 </div>
             </div>
 
@@ -68,7 +153,7 @@
 
         <section class="picked-zone">
             <div class="picked-head">
-                <h2>Ingredientes añadidos</h2>
+                <h2>Pasos de la receta añadidos</h2>
                 <span class="picked-sub">Tu lista para la receta actual</span>
             </div>
             <div id="picked-ingredients" class="picked-grid"></div>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle ingrediente</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 1rem; background: #fafafa; color: #222; }
+        .wrap { max-width: 980px; margin: 0 auto; }
+        .top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .btn, button { padding: 0.55rem 0.85rem; border-radius: 8px; border: 1px solid #666; background: #fff; color: #222; text-decoration: none; cursor: pointer; }
+        .danger { border-color: #b91c1c; background: #fee2e2; color: #7f1d1d; }
+        .card { margin-top: 1rem; background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 1rem; }
+        dl { display: grid; grid-template-columns: 220px 1fr; gap: 0.5rem 0.8rem; }
+        dt { font-weight: 700; }
+        pre { background: #f7f7f7; border: 1px solid #ddd; padding: 0.8rem; border-radius: 8px; overflow: auto; }
+        form { margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="top">
+            <h1>{{ ingredient.name }}</h1>
+            <a class="btn" href="{% url 'ingredients-list' %}">Volver al listado</a>
+        </div>
+
+        <section class="card">
+            <dl>
+                <dt>source_id</dt><dd>{{ ingredient.source_id }}</dd>
+                <dt>fdc_id</dt><dd>{{ ingredient.fdc_id|default:"-" }}</dd>
+                <dt>origen</dt><dd>{{ ingredient.source }}</dd>
+                <dt>nombre cientifico</dt><dd>{{ ingredient.scientific_name|default:"-" }}</dd>
+                <dt>nombre origen (EN)</dt><dd>{{ ingredient.source_name_en|default:"-" }}</dd>
+                <dt>energia total</dt><dd>{{ ingredient.energy_total|default:"-" }}</dd>
+                <dt>proteina total</dt><dd>{{ ingredient.protein_total|default:"-" }}</dd>
+                <dt>porcion comestible</dt><dd>{{ ingredient.edible_portion|default:"-" }}</dd>
+                <dt>creado</dt><dd>{{ ingredient.created_at }}</dd>
+                <dt>actualizado</dt><dd>{{ ingredient.updated_at }}</dd>
+            </dl>
+        </section>
+
+        <section class="card">
+            <h2>Nutrientes</h2>
+            <pre>{{ nutrients }}</pre>
+        </section>
+
+        <form method="post" onsubmit="return confirm('Esto eliminará el ingrediente y sus datos relacionados. ¿Continuar?');">
+            {% csrf_token %}
+            <button type="submit" class="danger">Eliminar ingrediente</button>
+        </form>
+    </div>
+</body>
+</html>
