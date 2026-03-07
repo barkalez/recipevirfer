@@ -1,32 +1,111 @@
 # recipevirfer
 
-Proyecto Django + DRF para gestionar ingredientes nutricionales con arquitectura **local-first** y creación de recetas por **pasos culinarios**.
+Proyecto Django + DRF para gestionar ingredientes nutricionales con enfoque local-first y creación de recetas por pasos culinarios.
+Incluye autenticación web con sesiones (Django auth + django-allauth) y usuario personalizado.
 
-## Estado actual
+## Resumen funcional
 
-- El dataset principal es `csv/nutritional-info.csv`.
+- Dataset base: `csv/nutritional-info.csv`.
 - PostgreSQL es la fuente primaria de datos.
-- El autocomplete siempre consulta primero la base local.
-- USDA FoodData Central se usa solo bajo demanda para ingredientes no existentes.
-- La pantalla de crear recetas trabaja con pasos tipo:
-  - `Sofreír 2 dientes de ajo picado durante 2 minutos.`
+- Autenticación web profesional con registro/login/logout, verificación de email y recuperación de contraseña.
+- Los autocompletes consultan primero la base local.
+- USDA FoodData Central se consulta solo bajo demanda para ingredientes no existentes.
+- La pantalla de recetas construye frases como: `Sofreir 2 dientes de ajo picado durante 2 minutos.`
 
-## Arquitectura Local-First
+## Requisitos
 
-1. Usuario escribe en un autocomplete.
-2. Backend consulta PostgreSQL.
-3. Si hay coincidencias: devuelve máximo 5.
+- Python 3.9+
+- PostgreSQL accesible desde `DATABASE_URL`
+- `pip` y entorno virtual (`venv`)
+
+## Quickstart
+
+1. Crear y activar entorno virtual.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+2. Instalar dependencias.
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Crear `.env` a partir del ejemplo y ajustarlo.
+
+```bash
+cp .env.example .env
+```
+
+4. Aplicar migraciones.
+
+```bash
+python manage.py migrate
+```
+
+5. Cargar datos iniciales recomendados.
+
+```bash
+python manage.py import_nutritional_info
+python manage.py import_culinary_units --path medidas_culinarias/medidas_culinarias.md
+python manage.py import_culinary_actions --path acciones_culinarias/acciones_culinarias.md
+python manage.py import_culinary_participles
+```
+
+Alternativa reproducible (usando fixture versionado en Git):
+
+```bash
+python manage.py loaddata apps/recipes/fixtures/initial_seed_data.json
+```
+
+6. Crear superusuario (opcional para admin).
+
+```bash
+python manage.py createsuperuser
+```
+
+7. Arrancar servidor de desarrollo.
+
+```bash
+python manage.py runserver
+```
+
+## Variables de entorno
+
+Ejemplo base (`.env`):
+
+```env
+SECRET_KEY=change-me
+DEBUG=True
+ALLOWED_HOSTS=127.0.0.1,localhost,testserver
+DATABASE_URL=postgres://fer@/recipes_db?host=/home/fer/proyectos/python/recipevirfer/.pgdata&port=55432
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+USDA_API_KEY=DEMO_KEY
+USDA_API_BASE_URL=https://api.nal.usda.gov/fdc/v1
+DEFAULT_FROM_EMAIL=no-reply@recipevirfer.local
+```
+
+Nota: valida la ruta del `host` Unix socket en `DATABASE_URL` para tu entorno local.
+
+## Arquitectura local-first
+
+1. El usuario escribe en un autocomplete.
+2. El backend consulta PostgreSQL.
+3. Si hay coincidencias, devuelve maximo 5.
 4. Si no hay coincidencias:
-   - Ingredientes: botón `Añadir "..." desde API` (USDA).
-   - Medidas, acciones y participios: botón para alta manual local.
-5. Una vez importado/creado, el dato queda persistido y aparece en búsquedas futuras locales.
+- Ingredientes: boton `Anadir "..." desde API` (USDA).
+- Medidas, acciones y participios: alta manual local.
+5. Una vez importado/creado, el dato queda persistido para futuras busquedas locales.
 
 ## Modelos principales
 
 ### `NutritionalInfoIngredient`
+
 - `source_id` (id local de referencia)
 - `fdc_id` (id USDA opcional)
-- `name` (nombre visible ES)
+- `name`
 - `normalized_name`
 - `scientific_name`
 - `source_name_en`
@@ -35,112 +114,185 @@ Proyecto Django + DRF para gestionar ingredientes nutricionales con arquitectura
 - `energy_total`
 - `protein_total`
 - `nutrients` (JSON)
-- `source_payload` (JSON técnico)
+- `source_payload` (JSON tecnico)
 
 ### `IngredientSearchAlias`
-Resolución ES -> EN para USDA.
+
+Resolucion ES -> EN para USDA.
 
 ### `CulinaryUnit`
+
 Medidas culinarias locales (seed/manual).
 
 ### `CulinaryAction`
+
 Acciones culinarias locales (seed/manual).
 
 ### `CulinaryParticiple`
+
 Participios culinarios locales (seed/manual), para frases tipo `ajo picado`.
 
-## Flujo USDA (solo bajo demanda)
+### `CulinaryTemperature`
 
-Endpoint: `POST /ingredients/import-from-api/`
+Temperaturas culinarias locales persistentes (seed/manual), para frases tipo `a 180 ºC`.
 
+### `accounts.User` (custom user model)
+
+- `email` unico (identificador principal de login)
+- `display_name`
+- `first_name`, `last_name`
+- `is_active`, `is_staff`, `date_joined`
+
+## Endpoints web
+
+- `GET /` landing
+- `GET /home/`
+- `GET /ingredients/`
+- `GET /ingredients/<source_id>/`
+- `GET /ingredients/<source_id>/json/`
+- `GET /recipes/create/`
+- `GET /recipes/<id>/`
+- `GET /recipes/<id>/edit/`
+- `POST /recipes/save/`
+- `POST /recipes/<id>/update/`
+
+### Autocompletes
+
+- `GET /ingredients/suggestions/?q=...`
+- `GET /culinary-units/suggestions/?q=...`
+- `GET /culinary-actions/suggestions/?q=...`
+- `GET /culinary-participles/suggestions/?q=...`
+- `GET /culinary-temperatures/suggestions/?q=...`
+
+Todos devuelven maximo 5 resultados, con busqueda case-insensitive y prioridad por prefijo.
+
+### Altas manuales
+
+- `POST /culinary-units/add/`
+- `POST /culinary-actions/add/`
+- `POST /culinary-participles/add/`
+- `POST /culinary-temperatures/add/`
+
+### Importacion USDA bajo demanda
+
+- `POST /ingredients/import-from-api/`
+
+Comportamiento:
 - Si el ingrediente ya existe localmente, no consulta USDA.
-- Si no existe:
-  - resuelve término en español,
-  - consulta USDA,
-  - selecciona el mejor candidato,
-  - mapea nutrientes al esquema local,
-  - guarda en PostgreSQL.
+- Si no existe, consulta USDA, mapea nutrientes y persiste en PostgreSQL.
 
-## Autocompletes activos
+## Endpoints API (DRF)
 
-- Ingredientes: `GET /ingredients/suggestions/?q=...`
-- Medidas culinarias: `GET /culinary-units/suggestions/?q=...`
-- Acciones culinarias: `GET /culinary-actions/suggestions/?q=...`
-- Participios culinarios: `GET /culinary-participles/suggestions/?q=...`
+Prefijo: `/api/v1/`
 
-Todos:
-- máximo 5 resultados,
-- búsqueda case-insensitive,
-- prioridad por prefijo,
-- sin recarga de página,
-- navegación con teclado.
+- `GET /api/v1/health/`
+- `GET /api/v1/ingredients/`
+- `GET /api/v1/ingredients/<source_id>/`
 
-## Endpoints de alta manual
-
-- Medidas: `POST /culinary-units/add/`
-- Acciones: `POST /culinary-actions/add/`
-- Participios: `POST /culinary-participles/add/`
-
-## Página de creación de recetas
+## Flujo de creacion de recetas
 
 Ruta: `/recipes/create/`
 
-Panel **Añadir pasos a la receta** con campos:
-1. Acción culinaria
+Importante: para crear/guardar/editar/ver detalle de recetas hay que iniciar sesión.
+Cada receta nueva se guarda asociada al usuario autenticado (`Recipe.owner`).
+
+Campos del paso culinario:
+1. Accion culinaria
 2. Cantidad
 3. Unidad
 4. Ingrediente
 5. Participio
-6. Duración (`sg`, `minutos`, `horas`)
+6. Temperatura (opcional)
+7. Duracion (`sg`, `minutos`, `horas`, opcional)
 
-Al añadir, se crea una card en **Pasos de la receta añadidos** con texto natural.
+Al anadir un paso, se genera una card en "Pasos de la receta anadidos" con texto natural.
 
-- Botón de card: `Eliminar paso`.
-- Lógica singular/plural aplicada para unidades y duración.
-- Límite de cantidad: máximo `10000`.
+- Incluye boton `Eliminar paso`.
+- Aplica logica singular/plural para unidades y duracion.
+- Limite de cantidad: `10000`.
 
-## Variables de entorno
+## Autenticación web (allauth)
 
-Configurar en `.env`:
+Rutas principales:
 
-```env
-SECRET_KEY=change-me
-DEBUG=True
-ALLOWED_HOSTS=127.0.0.1,localhost,testserver
-DATABASE_URL=postgres://fer@/recipes_db?host=/home/fer/proyectos/python/recipevirfer/.pgdata&port=55432
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-USDA_API_KEY=tu_api_key_usda
-USDA_API_BASE_URL=https://api.nal.usda.gov/fdc/v1
-```
+- `/accounts/login/`
+- `/accounts/signup/`
+- `/accounts/logout/`
+- `/accounts/password/change/`
+- `/accounts/password/reset/`
+- `/accounts/confirm-email/` (flujo allauth)
+- `/accounts/profile/` y `/accounts/` (zona de cuenta)
 
-## Comandos de gestión
+Login principal por email+password.
+La verificación de email y reset de contraseña se prueban en local con backend de correo a consola.
 
-```bash
-python manage.py migrate
-python manage.py purge_usda_ingredient_data
-python manage.py import_nutritional_info
-python manage.py import_culinary_units --path medidas_culinarias/medidas_culinarias.md
-python manage.py import_culinary_actions --path acciones_culinarias/acciones_culinarias.md
-python manage.py import_culinary_participles
-python manage.py runserver
-```
-
-## Verificación rápida
+## Comandos utiles
 
 ```bash
 python manage.py check
+python manage.py test apps.accounts.tests apps.recipes.tests
 python manage.py test apps.recipes.tests
+python manage.py purge_usda_ingredient_data
 ```
 
-Flujo manual recomendado:
+## Preparado para JWT en API
 
-1. Ir a `/recipes/create/`.
-2. Buscar acción/ingrediente/unidad/participio y seleccionar sugerencias.
-3. Si no existe unidad/acción/participio, usar botón de alta local.
-4. Si no existe ingrediente, usar `Añadir "..." desde API`.
-5. Añadir paso y comprobar frase final en el panel de pasos.
+La web usa sesiones de Django como flujo principal.
+La API DRF mantiene separación para que más adelante puedas añadir Simple JWT en `/api/v1/auth/` sin romper login web.
 
-## Notas
+## Persistencia en otras maquinas (GitHub)
 
-- El proyecto está optimizado para minimizar llamadas a USDA (cache local persistente).
-- USDA no participa en autocomplete en tiempo real.
+El estado de PostgreSQL no viaja con `git push`. Para mantener datos iniciales entre maquinas:
+
+1. Se versiona el fixture `apps/recipes/fixtures/initial_seed_data.json`.
+2. En la nueva maquina, tras `pull`, ejecutar:
+
+```bash
+python manage.py migrate
+python manage.py loaddata apps/recipes/fixtures/initial_seed_data.json
+```
+
+Si anades nuevos ingredientes/unidades/acciones/participios en tu maquina actual, regenera el fixture antes de `git push`:
+
+```bash
+python manage.py dumpdata recipes.NutritionalInfoIngredient recipes.CulinaryUnit recipes.CulinaryAction recipes.CulinaryParticiple --indent 2 > apps/recipes/fixtures/initial_seed_data.json
+```
+
+Luego haz `git add`, `git commit` y `git push`. En la otra maquina, tras `pull`, aplica `loaddata` para reflejar esos nuevos datos.
+
+## Troubleshooting
+
+- Warning `staticfiles.W004`: crea el directorio `static/` en la raiz del proyecto o ajusta `STATICFILES_DIRS`.
+- Si aparecen migraciones pendientes: `python manage.py migrate`.
+- Si falla la conexion a base de datos, revisa `DATABASE_URL` y que PostgreSQL este levantado.
+- Si ya tenias una BD antigua con `auth.User` y migraste a `accounts.User`, recrea la BD local y ejecuta migraciones desde cero.
+
+## Saneo de BD local (historial de migraciones inconsistente)
+
+Si aparece `InconsistentMigrationHistory`, el codigo puede estar correcto y el problema ser solo local.
+Procedimiento limpio aplicado en este proyecto:
+
+```bash
+# 1) Backup
+mkdir -p backups/db
+pg_dump "$DATABASE_URL" > "backups/db/recipes_db_before_reset_$(date +%Y%m%d_%H%M%S).sql"
+
+# 2) Reconectar a la BD postgres administrativa
+ADMIN_URL="${DATABASE_URL%/*}/postgres"
+
+# 3) Cerrar conexiones a la BD objetivo (ejemplo recipes_db)
+psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'recipes_db' AND pid <> pg_backend_pid();"
+
+# 4) Reset de BD
+psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"recipes_db\";"
+psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"recipes_db\";"
+
+# 5) Migraciones + seed
+python manage.py migrate --noinput
+python manage.py loaddata apps/recipes/fixtures/initial_seed_data.json
+
+# 6) Verificaciones finales
+python manage.py check
+python manage.py makemigrations --check --dry-run
+python manage.py test apps.accounts.tests
+```
