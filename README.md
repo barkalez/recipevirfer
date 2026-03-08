@@ -235,6 +235,47 @@ python manage.py test apps.recipes.tests
 python manage.py purge_usda_ingredient_data
 ```
 
+## OpenNutrition: carga completa y traduccion al vuelo
+
+### Cargar todo el dataset raw (ingles) en PostgreSQL
+
+El importador `import_opennutrition_raw` carga el TSV completo sin traducir masivamente.
+
+```bash
+python manage.py import_opennutrition_raw --path opennutrition_dataset/opennutrition_foods.tsv --batch-size 5000
+```
+
+Resultado esperado con el archivo actual:
+- filas procesadas: `326759`
+- ingredientes `opennutrition_raw` en BD: `326759`
+
+Nota tecnica:
+- el importador aplica truncado seguro en campos `CharField` limitados para evitar errores `varchar(300)` al cargar nombres largos.
+
+### Traduccion on-demand al seleccionar ingrediente
+
+En `/recipes/create/` la traduccion se dispara al seleccionar un ingrediente OpenNutrition:
+
+1. Si ya esta traducido correctamente, se reutiliza.
+2. Si esta en ingles o pendiente:
+   - intenta con LibreTranslate local (`LIBRETRANSLATE_URL`)
+   - si falla/no traduce, usa fallback local EN->ES para terminos comunes
+   - si sigue sin traducir, aplica fallback online (MyMemory) para resolver casos como `Watermelon -> Sandia`
+3. Guarda el resultado en BD para reutilizacion futura.
+
+Ademas, si un registro quedo marcado como `translated` pero con texto ingles (estado historico inconsistente), el sistema ahora lo repara automaticamente al volver a seleccionarlo.
+
+## UI nutricional (ingredientes)
+
+- Listado de ingredientes redisenado con cards y resumen nutricional rapido:
+  - `Calories`, `Protein`, `Carbohydrates`, `Fat`, `Fiber`
+  - card completa clicable hacia detalle
+- Vista individual de ingrediente:
+  - secciones por categoria (`Carbs`, `Fat`, `Protein`, `Amino Acids`, `Vitamins`, `Minerals`, `Other`)
+  - se muestran tambien nutrientes en `0`
+  - layout optimizado para evitar huecos vacios
+  - estilo visual unificado en tema oscuro
+
 ## Preparado para JWT en API
 
 La web usa sesiones de Django como flujo principal.
